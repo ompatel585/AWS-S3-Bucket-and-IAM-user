@@ -6,88 +6,111 @@ const {
     PutObjectCommand,
     ListObjectsV2Command,
     DeleteObjectCommand,
-    DeleteBucketCommand
+    DeleteBucketCommand,
+    ListObjectVersionsCommand,
+    DeleteObjectsCommand
 } = require('@aws-sdk/client-s3');
 
-// Load from .env
 const REGION = process.env.AWS_REGION;
 const BUCKET = process.env.BUCKET_NAME;
 
-// Initialize S3 client
 const s3 = new S3Client({
     region: REGION,
     credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     }
 });
 
-// Create a new bucket
 async function createBucket() {
     try {
         const command = new CreateBucketCommand({ Bucket: BUCKET });
         await s3.send(command);
-        console.log("✅ Bucket created:", BUCKET);
+        console.log("Bucket created successfully.");
     } catch (err) {
-        console.error("❌ Create Bucket Error:", err.message);
+        console.error("Error creating bucket:", err.message);
     }
 }
 
-// Upload file
 async function uploadFile() {
     try {
         const fileContent = fs.readFileSync('test.txt');
         const command = new PutObjectCommand({
             Bucket: BUCKET,
-            Key: "test.txt",
+            Key: 'test.txt',
             Body: fileContent
         });
         await s3.send(command);
-        console.log("✅ File uploaded: test.txt");
+        console.log("File uploaded: 'test.txt'");
     } catch (err) {
-        console.error("❌ Upload Error:", err.message);
+        console.error("Error uploading file:", err.message);
     }
 }
 
-// List all files in bucket
 async function listFiles() {
     try {
         const command = new ListObjectsV2Command({ Bucket: BUCKET });
         const res = await s3.send(command);
-        console.log("📄 Files:");
-        res.Contents?.forEach(file => console.log(" -", file.Key));
+        console.log("Files in bucket:");
+        res.Contents?.forEach(file => console.log("-", file.Key));
     } catch (err) {
-        console.error("❌ List Error:", err.message);
+        console.error("Error listing files:", err.message);
     }
 }
 
-// Delete file
 async function deleteFile() {
     try {
-        const command = new DeleteObjectCommand({ Bucket: BUCKET, Key: "test.txt" });
+        const command = new DeleteObjectCommand({
+            Bucket: BUCKET,
+            Key: "test.txt",
+        });
         await s3.send(command);
-        console.log("🗑️ File deleted: test.txt");
+        console.log("File deleted: test.txt");
     } catch (err) {
-        console.error("❌ Delete File Error:", err.message);
+        console.error("Error deleting file:", err.message);
+    }
+}
+async function emptyBucket() {
+    try {
+        const listCommand = new ListObjectVersionsCommand({ Bucket: BUCKET });
+        const data = await s3.send(listCommand);
+
+        const objects = [];
+        data.Versions?.forEach(v => objects.push({ Key: v.Key, VersionId: v.VersionId }));
+        data.DeleteMarkers?.forEach(m => objects.push({ Key: m.Key, VersionId: m.VersionId }));
+
+        if (objects.length === 0) {
+            console.log("Bucket is already empty.");
+            return;
+        }
+
+        const deleteCommand = new DeleteObjectsCommand({
+            Bucket: BUCKET,
+            Delete: { Objects: objects }
+        });
+
+        await s3.send(deleteCommand);
+        console.log(`Deleted ${objects.length} objects (versions + markers).`);
+    } catch (err) {
+        console.error("Error emptying bucket:", err.message);
     }
 }
 
-// Delete bucket (must be empty)
 async function deleteBucket() {
     try {
+        await emptyBucket();  
         const command = new DeleteBucketCommand({ Bucket: BUCKET });
         await s3.send(command);
-        console.log("🗑️ Bucket deleted:", BUCKET);
+        console.log("Bucket deleted successfully.");
     } catch (err) {
-        console.error("❌ Delete Bucket Error:", err.message);
+        console.error("Error deleting bucket:", err.message);
     }
 }
 
-// Run all
 (async () => {
-    //await createBucket();
-    //await uploadFile();
+    await createBucket();
+    await uploadFile();
     await listFiles();
-    //await deleteFile();
-    //await deleteBucket();
+    await deleteFile();
+    await deleteBucket(); // will also empty bucket first
 })();
