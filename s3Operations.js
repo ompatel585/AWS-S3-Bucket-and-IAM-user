@@ -112,5 +112,5 @@ async function deleteBucket() {
     await uploadFile();
     await listFiles();
     await deleteFile();
-    await deleteBucket(); // will also empty bucket first
+    await deleteBucket();
 })();
