@@ -1,66 +1,67 @@
-require('dotenv').config(); // Load environment variables from .env
+require('dotenv').config(); 
 const AWS = require('aws-sdk');
 
 AWS.config.update({
-    region: process.env.AWS_REGION,
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
-// ... your IAM logic continues here
+const iam = new AWS.IAM();
 
-
- // Create IAM service object
- const iam = new AWS.IAM();
- // Function to create an IAM user
- const createUser = async (username) => {
-  const params = {
-    UserName: username,  // The username of the IAM user to be created
-  };
+const createUser = async (username) => {
+  const params = { UserName: username };
   try {
     const result = await iam.createUser(params).promise();
-    console.log('User created:', result.User.UserName);
+    console.log(' User created:', result.User.UserName);
     return result.User;
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error('Error creating user:', error.message);
   }
 };
- // Function to create an IAM group
- const createGroup = async (groupName) => {
-  const params = {
-    GroupName: groupName,  // The name of the IAM group to be created
-  };
+
+const createGroup = async (groupName) => {
+  const params = { GroupName: groupName };
   try {
     const result = await iam.createGroup(params).promise();
-    console.log('Group created:', result.Group.GroupName);
+    console.log(' Group created:', result.Group.GroupName);
     return result.Group;
   } catch (error) {
-    console.error('Error creating group:', error);
+    console.error(' Error creating group:', error.message);
   }
- };
- // Function to add the user to the group
- const addUserToGroup = async (username, groupName) => {
-  const params = {
-    GroupName: groupName,  // The name of the IAM group
-    UserName: username,    // The name of the IAM user to add
-  };
+};
+
+const addUserToGroup = async (username, groupName) => {
+  const params = { GroupName: groupName, UserName: username };
   try {
-    const result = await iam.addUserToGroup(params).promise();
-    console.log(`User ${username} added to group ${groupName}`);
+    await iam.addUserToGroup(params).promise();
+    console.log(` User ${username} added to group ${groupName}`);
   } catch (error) {
-    console.error('Error adding user to group:', error);
+    console.error(' Error adding user to group:', error.message);
   }
- };
- // Main logic to create user, group, and add user to the group
- const main = async () => {
-  const username = 'newUser';    // Replace with desired user name
-  const groupName = 'newGroup';  // Replace with desired group name
-  // Create a user
-  const user = await createUser(username);
-  // Create a group
-  const group = await createGroup(groupName);
-  // Add the user to the group
+};
+
+const attachPolicyToGroup = async (groupName, policyArn) => {
+  const params = { GroupName: groupName, PolicyArn: policyArn };
+  try {
+    await iam.attachGroupPolicy(params).promise();
+    console.log(` Policy ${policyArn} attached to group ${groupName}`);
+  } catch (error) {
+    console.error(' Error attaching policy to group:', error.message);
+  }
+};
+
+const main = async () => {
+  const username = 'newUser';        
+  const groupName = 'adminGroup';    
+
+  await createUser(username);
+  await createGroup(groupName);
   await addUserToGroup(username, groupName);
- };
- // Run the main function
- main();
+
+  
+  const policyArn = 'arn:aws:iam::aws:policy/AdministratorAccess';
+  await attachPolicyToGroup(groupName, policyArn);
+};
+
+main();
