@@ -52,8 +52,8 @@ const attachPolicyToGroup = async (groupName, policyArn) => {
 };
 
 const main = async () => {
-  const username = 'newUser';        
-  const groupName = 'adminGroup';    
+  const username = 'OmPatel';        
+  const groupName = 'testGrp';    
 
   await createUser(username);
   await createGroup(groupName);
