@@ -63,9 +63,9 @@ async function applyBucketPolicy() {
             Policy: JSON.stringify(policy)
         });
         await s3.send(command);
-        console.log("✅ Bucket policy applied to allow OmPatel.");
+        console.log(" Bucket policy applied to allow OmPatel.");
     } catch (err) {
-        console.error("❌ Error setting bucket policy:", err.message);
+        console.error(" Error setting bucket policy:", err.message);
     }
 }
 
